@@ -47,27 +47,33 @@ def build_components():
 def build_chain_and_streaming():
     retriever, prompt, llm = build_components()
 
+    def docs_to_chunks(docs) -> list[dict]:
+        return [
+            {"content": doc.page_content, "source": doc.metadata.get("source", "不明")}
+            for doc in docs
+        ]
+
     def retrieve_and_format(question: str) -> dict:
         docs = retriever.invoke(question)
         return {
             "context": "\n\n".join(doc.page_content for doc in docs),
             "question": question,
-            "sources": list({doc.metadata.get("source", "不明") for doc in docs}),
+            "chunks": docs_to_chunks(docs),
         }
 
     chain = RunnableLambda(retrieve_and_format) | RunnableParallel(
         answer=prompt | llm | StrOutputParser(),
-        sources=RunnableLambda(lambda x: x["sources"]),
+        chunks=RunnableLambda(lambda x: x["chunks"]),
     )
 
     async def stream_fn(question: str) -> AsyncGenerator[dict, None]:
         docs = retriever.invoke(question)
-        sources = list({doc.metadata.get("source", "不明") for doc in docs})
+        chunks = docs_to_chunks(docs)
         context = "\n\n".join(doc.page_content for doc in docs)
         async for chunk in (prompt | llm | StrOutputParser()).astream(
             {"context": context, "question": question}
         ):
             yield {"type": "token", "content": chunk}
-        yield {"type": "sources", "content": sources}
+        yield {"type": "sources", "content": chunks}
 
     return chain, stream_fn

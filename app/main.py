@@ -43,9 +43,14 @@ class QueryRequest(BaseModel):
     question: str
 
 
+class Chunk(BaseModel):
+    content: str
+    source: str
+
+
 class QueryResponse(BaseModel):
     answer: str
-    sources: list[str]
+    chunks: list[Chunk]
 
 
 @app.get("/health")
@@ -57,8 +62,8 @@ def health():
 def query(request: QueryRequest):
     try:
         result = get_chain().invoke(request.question)
-        track(question=request.question, answer=result["answer"], chunks=result["sources"], api_key=RAGEVAL_API_KEY)
-        return QueryResponse(answer=result["answer"], sources=result["sources"])
+        track(question=request.question, answer=result["answer"], chunks=result["chunks"], api_key=RAGEVAL_API_KEY)
+        return QueryResponse(answer=result["answer"], chunks=result["chunks"])
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -67,18 +72,18 @@ def query(request: QueryRequest):
 async def query_stream(request: QueryRequest):
     async def generate():
         answer = ""
-        sources: list[str] = []
+        chunks: list[dict] = []
         try:
             async for event in get_stream_fn()(request.question):
                 if event["type"] == "token":
                     answer += event["content"]
                 elif event["type"] == "sources":
-                    sources = event["content"]
+                    chunks = event["content"]
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
             return
         if answer:
-            track(question=request.question, answer=answer, chunks=sources, api_key=RAGEVAL_API_KEY)
+            track(question=request.question, answer=answer, chunks=chunks, api_key=RAGEVAL_API_KEY)
 
     return StreamingResponse(generate(), media_type="text/event-stream")
