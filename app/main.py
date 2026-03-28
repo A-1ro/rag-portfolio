@@ -66,10 +66,19 @@ def query(request: QueryRequest):
 @app.post("/query/stream", dependencies=[Depends(verify_api_key)])
 async def query_stream(request: QueryRequest):
     async def generate():
+        answer = ""
+        sources: list[str] = []
         try:
             async for event in get_stream_fn()(request.question):
+                if event["type"] == "token":
+                    answer += event["content"]
+                elif event["type"] == "sources":
+                    sources = event["content"]
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+            return
+        if answer:
+            track(question=request.question, answer=answer, chunks=sources, api_key=RAGEVAL_API_KEY)
 
     return StreamingResponse(generate(), media_type="text/event-stream")
