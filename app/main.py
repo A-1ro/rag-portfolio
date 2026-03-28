@@ -57,7 +57,7 @@ def health():
 def query(request: QueryRequest):
     try:
         result = get_chain().invoke(request.question)
-        track(request.question, result["answer"], result["sources"], api_key=RAGEVAL_API_KEY)
+        track(question=request.question, answer=result["answer"], chunks=result["sources"], api_key=RAGEVAL_API_KEY)
         return QueryResponse(answer=result["answer"], sources=result["sources"])
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
