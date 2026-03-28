@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+API_KEY = os.environ["API_KEY"]
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 QDRANT_URL = os.environ["QDRANT_URL"]
 QDRANT_API_KEY = os.environ["QDRANT_API_KEY"]

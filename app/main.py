@@ -1,15 +1,24 @@
 import json
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Security
 from fastapi.responses import StreamingResponse
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 
 from app.chain import build_chain_and_streaming
+from app.config import API_KEY
 
 app = FastAPI(title="RAG Portfolio API")
 
 _chain = None
 _stream_fn = None
+
+api_key_header = APIKeyHeader(name="X-API-Key")
+
+
+def verify_api_key(key: str = Security(api_key_header)):
+    if key != API_KEY:
+        raise HTTPException(status_code=403, detail="Invalid API key")
 
 
 def _ensure_initialized():
@@ -42,7 +51,7 @@ def health():
     return {"status": "ok"}
 
 
-@app.post("/query", response_model=QueryResponse)
+@app.post("/query", response_model=QueryResponse, dependencies=[Depends(verify_api_key)])
 def query(request: QueryRequest):
     try:
         result = get_chain().invoke(request.question)
@@ -51,7 +60,7 @@ def query(request: QueryRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/query/stream")
+@app.post("/query/stream", dependencies=[Depends(verify_api_key)])
 async def query_stream(request: QueryRequest):
     async def generate():
         try:
