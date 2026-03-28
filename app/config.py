@@ -8,6 +8,7 @@ OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 QDRANT_URL = os.environ["QDRANT_URL"]
 QDRANT_API_KEY = os.environ["QDRANT_API_KEY"]
 GROQ_API_KEY = os.environ["GROQ_API_KEY"]
+RAGEVAL_API_KEY = os.environ["RAGEVAL_API_KEY"]
 
 COLLECTION_NAME = "portfolio_docs"
 EMBEDDING_MODEL = "text-embedding-3-small"

@@ -6,7 +6,9 @@ from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 
 from app.chain import build_chain_and_streaming
-from app.config import API_KEY
+from app.config import API_KEY, RAGEVAL_API_KEY
+
+from rag_eval import track
 
 app = FastAPI(title="RAG Portfolio API")
 
@@ -55,6 +57,7 @@ def health():
 def query(request: QueryRequest):
     try:
         result = get_chain().invoke(request.question)
+        track(request.question, result["answer"], result["sources"], api_key=RAGEVAL_API_KEY)
         return QueryResponse(answer=result["answer"], sources=result["sources"])
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
